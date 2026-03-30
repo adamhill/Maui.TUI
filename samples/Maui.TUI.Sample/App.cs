@@ -11,6 +11,7 @@ class App : Application
 			Title = "MAUI TUI Sample",
 			Children =
 			{
+				new BouncingLogoDemoPage(),
 				new ControlsPage(),
 				new CollectionViewPage(),
 				new NavigationPage(new NavigationDemoPage()) { Title = "Navigation" },

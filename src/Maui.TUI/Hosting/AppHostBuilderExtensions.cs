@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using Maui.TUI.Controls;
 using Maui.TUI.Handlers;
 using Maui.TUI.Platform;
 using Microsoft.Extensions.DependencyInjection;
@@ -73,6 +74,9 @@ public static class AppHostBuilderExtensions
 		handlersCollection.AddHandler<Microsoft.Maui.Controls.DatePicker, DatePickerHandler>();
 		handlersCollection.AddHandler<Microsoft.Maui.Controls.TimePicker, TimePickerHandler>();
 		handlersCollection.AddHandler<Microsoft.Maui.Controls.Stepper, StepperHandler>();
+
+		// Animation Controls
+		handlersCollection.AddHandler<AsciiCanvasView, AsciiCanvasViewHandler>();
 
 		return handlersCollection;
 	}

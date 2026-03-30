@@ -13,4 +13,8 @@
     <PackageReference Include="XenoAtom.Terminal.UI" Version="1.0.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Maui.TUI.Animation.Tests" />
+  </ItemGroup>
+
 </Project>

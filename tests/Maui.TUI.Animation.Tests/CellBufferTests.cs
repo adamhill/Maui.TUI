@@ -1,4 +1,5 @@
 #nullable enable
+using System.Runtime.CompilerServices;
 using System.Text;
 using Maui.TUI.Animation;
 using Microsoft.Maui.Graphics;
@@ -69,6 +70,16 @@ public class CellBufferTests
 	public void TerminalCell_IsValueType()
 	{
 		Assert.True(typeof(TerminalCell).IsValueType);
+	}
+
+	/// <summary>
+	/// TerminalCell struct size must be ≤ 32 bytes as required by the spec.
+	/// </summary>
+	[Fact]
+	public void TerminalCell_StructSize_LessThanOrEqual32Bytes()
+	{
+		var size = Unsafe.SizeOf<TerminalCell>();
+		Assert.True(size <= 32, $"TerminalCell is {size} bytes, expected ≤ 32");
 	}
 
 	// ── CellBuffer construction & Clear ─────────────────────────
