@@ -7,6 +7,7 @@ using Maui.TUI.Controls;
 using Maui.TUI.Platform;
 using Microsoft.Maui.Animations;
 using Microsoft.Maui.Handlers;
+using Serilog;
 using XenoAtom.Terminal.UI;
 using XenoAtom.Terminal.UI.Controls;
 using XenoAtom.Terminal.UI.Styling;
@@ -35,6 +36,7 @@ namespace Maui.TUI.Handlers;
 /// </remarks>
 public partial class AsciiCanvasViewHandler : TuiViewHandler<IAsciiCanvasView, TuiCanvas>
 {
+	private static readonly ILogger Logger = Log.ForContext<AsciiCanvasViewHandler>();
 	/// <summary>Property mapper for AsciiCanvasView properties.</summary>
 	public static IPropertyMapper<IAsciiCanvasView, AsciiCanvasViewHandler> Mapper =
 		new PropertyMapper<IAsciiCanvasView, AsciiCanvasViewHandler>(ViewMapper)
@@ -83,6 +85,9 @@ public partial class AsciiCanvasViewHandler : TuiViewHandler<IAsciiCanvasView, T
 		// Register the Painter callback — this runs during XenoAtom's render pass.
 		// It reads from our CellBuffer and writes to the CanvasContext.
 		canvas.Painter(BlitToCanvas);
+
+		Logger.Debug("Canvas platform view created");
+
 		return canvas;
 	}
 
@@ -100,11 +105,16 @@ public partial class AsciiCanvasViewHandler : TuiViewHandler<IAsciiCanvasView, T
 		_tickCallback = OnTick;
 
 		EnsureBuffer();
+
+		Logger.Information("AsciiCanvasViewHandler connected (ticker={HasTicker})",
+			_ticker is not null);
 	}
 
 	/// <inheritdoc/>
 	protected override void DisconnectHandler(TuiCanvas platformView)
 	{
+		Logger.Information("AsciiCanvasViewHandler disconnecting");
+
 		UnsubscribeFromTicker();
 		_ticker = null;
 		_tickCallback = null;
@@ -133,6 +143,8 @@ public partial class AsciiCanvasViewHandler : TuiViewHandler<IAsciiCanvasView, T
 		if (handler._buffer is { } buffer &&
 			(buffer.Width != view.CanvasWidth || buffer.Height != view.CanvasHeight))
 		{
+			Logger.Debug("Canvas resized from {OldW}x{OldH} to {NewW}x{NewH}",
+				buffer.Width, buffer.Height, view.CanvasWidth, view.CanvasHeight);
 			buffer.Resize(view.CanvasWidth, view.CanvasHeight);
 		}
 
@@ -148,6 +160,8 @@ public partial class AsciiCanvasViewHandler : TuiViewHandler<IAsciiCanvasView, T
 	/// </summary>
 	public static void MapIsAnimating(AsciiCanvasViewHandler handler, IAsciiCanvasView view)
 	{
+		Logger.Debug("IsAnimating changed to {IsAnimating}", view.IsAnimating);
+
 		if (view.IsAnimating)
 			handler.SubscribeToTicker();
 		else

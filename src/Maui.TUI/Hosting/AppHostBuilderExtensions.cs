@@ -9,6 +9,7 @@ using Microsoft.Maui.Controls;
 using Microsoft.Maui.Controls.Hosting;
 using Microsoft.Maui.Dispatching;
 using Microsoft.Maui.Hosting;
+using Serilog;
 
 namespace Maui.TUI.Hosting;
 
@@ -83,6 +84,12 @@ public static class AppHostBuilderExtensions
 
 	static MauiAppBuilder SetupDefaults(this MauiAppBuilder builder)
 	{
+		// Ensure Serilog is initialized and wire it into DI as the ILogger provider
+		TuiLogging.EnsureInitialized();
+		builder.Services.AddSerilog();
+
+		Log.Information("Configuring MAUI TUI services");
+
 		builder.Services.AddSingleton<IDispatcherProvider>(svc => new TuiDispatcherProvider());
 
 		// Register TuiTicker as a singleton so the same instance is shared across the app.
@@ -110,6 +117,8 @@ public static class AppHostBuilderExtensions
 		{
 			handlers.AddMauiControlsHandlers();
 		});
+
+		Log.Debug("MAUI TUI service registration complete: {HandlerCount} handlers registered", 28);
 
 		return builder;
 	}

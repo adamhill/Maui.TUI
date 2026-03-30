@@ -1,11 +1,14 @@
 using System.Collections.Concurrent;
 using Microsoft.Maui.Dispatching;
+using Serilog;
 using XenoAtom.Terminal.UI;
 
 namespace Maui.TUI.Platform;
 
 public class TuiDispatcherProvider : IDispatcherProvider
 {
+	private static readonly ILogger Logger = Log.ForContext<TuiDispatcherProvider>();
+
 	[ThreadStatic]
 	static IDispatcher? s_dispatcherInstance;
 
@@ -15,16 +18,26 @@ public class TuiDispatcherProvider : IDispatcherProvider
 
 public class TuiDispatcher : IDispatcher
 {
+	private static readonly ILogger Logger = Log.ForContext<TuiDispatcher>();
+
 	static TerminalApp? s_terminalApp;
 	static Thread? s_uiThread;
 
-	public static void SetUIThread() => s_uiThread = Thread.CurrentThread;
+	public static void SetUIThread()
+	{
+		s_uiThread = Thread.CurrentThread;
+		Logger.Debug("UI thread set to {ThreadId}", Thread.CurrentThread.ManagedThreadId);
+	}
 
 	/// <summary>
 	/// Sets the TerminalApp instance so dispatched actions can be posted to the TUI run loop.
 	/// Must be called before Run().
 	/// </summary>
-	public static void SetTerminalApp(TerminalApp app) => s_terminalApp = app;
+	public static void SetTerminalApp(TerminalApp app)
+	{
+		s_terminalApp = app;
+		Logger.Debug("TerminalApp registered with TuiDispatcher");
+	}
 
 	public bool IsDispatchRequired => Thread.CurrentThread != s_uiThread;
 
@@ -43,6 +56,8 @@ public class TuiDispatcher : IDispatcher
 		else
 		{
 			// Fallback: run inline (pre-Run() phase)
+			Logger.Verbose("Dispatch called before TerminalApp available, executing inline on thread {ThreadId}",
+				Environment.CurrentManagedThreadId);
 			action();
 		}
 		return true;
@@ -50,6 +65,7 @@ public class TuiDispatcher : IDispatcher
 
 	public bool DispatchDelayed(TimeSpan delay, Action action)
 	{
+		Logger.Verbose("Dispatching delayed action ({DelayMs}ms)", delay.TotalMilliseconds);
 		_ = Task.Run(async () =>
 		{
 			await Task.Delay(delay);
@@ -63,6 +79,8 @@ public class TuiDispatcher : IDispatcher
 
 public class TuiDispatcherTimer : IDispatcherTimer
 {
+	private static readonly ILogger Logger = Log.ForContext<TuiDispatcherTimer>();
+
 	readonly TuiDispatcher _dispatcher;
 	Timer? _timer;
 
@@ -81,6 +99,10 @@ public class TuiDispatcherTimer : IDispatcherTimer
 	{
 		if (IsRunning) return;
 		IsRunning = true;
+
+		Logger.Debug("DispatcherTimer started (interval={IntervalMs}ms, repeating={IsRepeating})",
+			Interval.TotalMilliseconds, IsRepeating);
+
 		_timer = new Timer(_ =>
 		{
 			_dispatcher.Dispatch(() =>
@@ -97,5 +119,7 @@ public class TuiDispatcherTimer : IDispatcherTimer
 		IsRunning = false;
 		_timer?.Dispose();
 		_timer = null;
+
+		Logger.Debug("DispatcherTimer stopped");
 	}
 }

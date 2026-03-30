@@ -1,8 +1,10 @@
 #nullable enable
 using System.Collections;
 using System.Collections.Specialized;
+using Maui.TUI.Hosting;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Platform;
+using Serilog;
 using XenoAtom.Terminal.UI;
 using XenoAtom.Terminal.UI.Controls;
 using XenoAtom.Terminal.UI.Templating;
@@ -26,6 +28,8 @@ public sealed class CollectionViewItem
 
 public partial class CollectionViewHandler : TuiViewHandler<CollectionView, ListBox<CollectionViewItem>>
 {
+	private static readonly ILogger Logger = Log.ForContext<CollectionViewHandler>();
+
 	INotifyCollectionChanged? _observableSource;
 	bool _updatingSelection;
 	readonly HashSet<object> _selectedItems = new();
@@ -53,6 +57,7 @@ public partial class CollectionViewHandler : TuiViewHandler<CollectionView, List
 
 	protected override ListBox<CollectionViewItem> CreatePlatformView()
 	{
+		Logger.Debug("Creating ListBox for CollectionView");
 		return new ListBox<CollectionViewItem>
 		{
 			VerticalAlignment = Align.Stretch,
@@ -211,8 +216,10 @@ public partial class CollectionViewHandler : TuiViewHandler<CollectionView, List
 		if (VirtualView.ItemsSource is not IEnumerable items)
 			return;
 
+		int itemCount = 0;
 		if (VirtualView.IsGrouped)
 		{
+			int groupIndex = 0;
 			foreach (var group in items)
 			{
 				// Add group header
@@ -221,15 +228,27 @@ public partial class CollectionViewHandler : TuiViewHandler<CollectionView, List
 				// Add group items
 				if (group is IEnumerable groupItems)
 				{
+					int childIndex = 0;
 					foreach (var item in groupItems)
+					{
 						PlatformView.Items.Add(new CollectionViewItem(item));
+						childIndex++;
+						itemCount++;
+					}
+					Logger.Verbose("Group {GroupIndex}: {ChildCount} items", groupIndex, childIndex);
 				}
+				groupIndex++;
 			}
+			Logger.Debug("Loaded {GroupCount} groups with {ItemCount} total items", groupIndex, itemCount);
 		}
 		else
 		{
 			foreach (var item in items)
+			{
 				PlatformView.Items.Add(new CollectionViewItem(item));
+				itemCount++;
+			}
+			Logger.Debug("Loaded {ItemCount} items (flat)", itemCount);
 		}
 	}
 
@@ -426,6 +445,7 @@ public partial class CollectionViewHandler : TuiViewHandler<CollectionView, List
 
 	public static void MapSelectionMode(CollectionViewHandler handler, CollectionView view)
 	{
+		Logger.Debug("Selection mode changed to {SelectionMode}", view.SelectionMode);
 		// Clear multi-select state when switching modes
 		handler._selectedItems.Clear();
 		handler.RebuildTemplate();

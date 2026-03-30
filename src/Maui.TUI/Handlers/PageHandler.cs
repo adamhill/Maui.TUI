@@ -1,7 +1,9 @@
 #nullable enable
+using Maui.TUI.Hosting;
 using Maui.TUI.Platform;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Platform;
+using Serilog;
 using XenoAtom.Terminal.UI;
 using XenoAtom.Terminal.UI.Controls;
 using XenoAtom.Terminal.UI.Layout;
@@ -15,6 +17,8 @@ namespace Maui.TUI.Handlers;
 /// </summary>
 public partial class PageHandler : TuiViewHandler<IContentView, DockLayout>
 {
+	private static readonly ILogger Logger = Log.ForContext<PageHandler>();
+
 	TuiContentPanel? _contentPanel;
 	HStack? _toolbarPanel;
 
@@ -36,6 +40,9 @@ public partial class PageHandler : TuiViewHandler<IContentView, DockLayout>
 	protected override DockLayout CreatePlatformView()
 	{
 		_ = VirtualView ?? throw new InvalidOperationException($"{nameof(VirtualView)} must be set.");
+
+		var pageType = VirtualView.GetType().Name;
+		Logger.Debug("Creating DockLayout for {PageType}", pageType);
 
 		_contentPanel = new TuiContentPanel
 		{
@@ -68,11 +75,16 @@ public partial class PageHandler : TuiViewHandler<IContentView, DockLayout>
 		base.ConnectHandler(platformView);
 
 		if (VirtualView is ContentPage page)
+		{
+			Logger.Debug("Connecting PageHandler for {PageType} with {ToolbarCount} toolbar items",
+				page.GetType().Name, page.ToolbarItems.Count);
 			UpdateToolbar(page);
+		}
 	}
 
 	protected override void DisconnectHandler(DockLayout platformView)
 	{
+		Logger.Debug("Disconnecting PageHandler");
 		base.DisconnectHandler(platformView);
 	}
 
@@ -85,6 +97,7 @@ public partial class PageHandler : TuiViewHandler<IContentView, DockLayout>
 
 		foreach (var item in page.ToolbarItems)
 		{
+			Logger.Verbose("Adding toolbar item: {ItemText}", item.Text);
 			var btn = new TuiButton(item.Text ?? string.Empty);
 			var captured = item;
 			btn.ClickRouted += (s, e) =>
@@ -109,9 +122,14 @@ public partial class PageHandler : TuiViewHandler<IContentView, DockLayout>
 
 		if (handler.VirtualView.PresentedContent is IView view)
 		{
-			var platformView = view.ToPlatform(handler.MauiContext);
-			if (platformView is Visual visual)
-				handler._contentPanel.Children.Add(visual);
+			var contentType = view.GetType().Name;
+			using (TuiLogging.PushChildContext("Page", contentType, 0))
+			{
+				Logger.Debug("Mapping page content: {ContentType}", contentType);
+				var platformView = view.ToPlatform(handler.MauiContext);
+				if (platformView is Visual visual)
+					handler._contentPanel.Children.Add(visual);
+			}
 		}
 
 		// Rebuild toolbar when content is mapped (toolbar items may have changed)

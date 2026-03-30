@@ -1,27 +1,20 @@
 #nullable enable
+using Serilog;
+
 namespace Maui.TUI.Platform;
 
 /// <summary>
-/// Simple diagnostic logger that writes timestamped, thread-tagged lines to a fixed log file.
-/// All writes are fire-and-forget — any IO error is silently swallowed so the logger
-/// never crashes the host process.
+/// Legacy diagnostic logger — now delegates to Serilog.
+/// Retained for API compatibility. Prefer injecting <c>ILogger</c> or using
+/// <c>Log.ForContext&lt;T&gt;()</c> directly.
 /// </summary>
+[Obsolete("Use Serilog Log.ForContext<T>() instead. This class delegates to Serilog internally.")]
 internal static class TuiDebugLog
 {
-    private const string LogPath = "/tmp/maui-tui-debug.log";
-
-    static TuiDebugLog()
-    {
-        try { File.Delete(LogPath); } catch { }
-    }
+    private static readonly ILogger Logger = Serilog.Log.ForContext(typeof(TuiDebugLog));
 
     internal static void Log(string message)
     {
-        try
-        {
-            var line = $"[{DateTime.Now:HH:mm:ss.fff}] [{Environment.CurrentManagedThreadId:D3}] {message}\n";
-            File.AppendAllText(LogPath, line);
-        }
-        catch { }
+        Logger.Debug("{Message}", message);
     }
 }

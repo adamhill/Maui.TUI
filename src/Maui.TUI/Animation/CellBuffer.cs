@@ -3,6 +3,7 @@ using System.Buffers;
 using System.Runtime.CompilerServices;
 using System.Text;
 using Microsoft.Maui.Graphics;
+using Serilog;
 
 namespace Maui.TUI.Animation;
 
@@ -24,6 +25,8 @@ namespace Maui.TUI.Animation;
 /// </remarks>
 public sealed class CellBuffer
 {
+	private static readonly ILogger Logger = Log.ForContext<CellBuffer>();
+
 	private TerminalCell[] _cells;
 	private bool _fromPool;
 
@@ -51,6 +54,9 @@ public sealed class CellBuffer
 		Height = height;
 		_cells = new TerminalCell[width * height];
 		_cells.AsSpan().Fill(TerminalCell.Empty);
+
+		Logger.Debug("CellBuffer created: {Width}x{Height} ({CellCount} cells, {ByteSize} bytes)",
+			width, height, width * height, width * height * Unsafe.SizeOf<TerminalCell>());
 	}
 
 	/// <summary>
@@ -263,6 +269,9 @@ public sealed class CellBuffer
 		if (newWidth == Width && newHeight == Height)
 			return;
 
+		Logger.Debug("CellBuffer resizing: {OldWidth}x{OldHeight} → {NewWidth}x{NewHeight}",
+			Width, Height, newWidth, newHeight);
+
 		int newLength = newWidth * newHeight;
 		int copyWidth = Math.Min(Width, newWidth);
 		int copyHeight = Math.Min(Height, newHeight);
@@ -270,6 +279,8 @@ public sealed class CellBuffer
 		if (newLength > _cells.Length)
 		{
 			// Need a larger array — allocate from pool, copy rows, return old
+			Logger.Debug("CellBuffer pool allocation: {OldCapacity} → {NewCapacity} cells (growth)",
+				_cells.Length, newLength);
 			var newCells = ArrayPool<TerminalCell>.Shared.Rent(newLength);
 			newCells.AsSpan(0, newLength).Fill(TerminalCell.Empty);
 

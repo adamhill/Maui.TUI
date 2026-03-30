@@ -1,6 +1,8 @@
 #nullable enable
+using Maui.TUI.Hosting;
 using Maui.TUI.Platform;
 using Microsoft.Maui.Platform;
+using Serilog;
 using XenoAtom.Terminal.UI;
 using XenoAtom.Terminal.UI.Controls;
 using XenoAtom.Terminal.UI.Layout;
@@ -17,6 +19,8 @@ namespace Maui.TUI.Handlers;
 /// </summary>
 public partial class FlyoutPageHandler : TuiViewHandler<IFlyoutView, TuiGrid>
 {
+	private static readonly ILogger Logger = Log.ForContext<FlyoutPageHandler>();
+
 	public static IPropertyMapper<IFlyoutView, FlyoutPageHandler> Mapper =
 		new PropertyMapper<IFlyoutView, FlyoutPageHandler>(ViewMapper)
 		{
@@ -39,6 +43,7 @@ public partial class FlyoutPageHandler : TuiViewHandler<IFlyoutView, TuiGrid>
 
 	protected override TuiGrid CreatePlatformView()
 	{
+		Logger.Debug("Creating FlyoutPage grid layout");
 		var grid = new TuiGrid
 		{
 			HorizontalAlignment = Align.Stretch,
@@ -72,12 +77,17 @@ public partial class FlyoutPageHandler : TuiViewHandler<IFlyoutView, TuiGrid>
 
 		if (view.Flyout is IView flyoutView)
 		{
-			var platformFlyout = flyoutView.ToPlatform(handler.MauiContext);
-			if (platformFlyout is Visual visual)
+			var flyoutType = flyoutView.GetType().Name;
+			using (TuiLogging.PushChildContext("FlyoutPage", flyoutType, 0))
 			{
-				visual.HorizontalAlignment = Align.Stretch;
-				visual.VerticalAlignment = Align.Stretch;
-				handler._flyoutCell.Content = visual;
+				Logger.Debug("Mapping flyout panel: {FlyoutType}", flyoutType);
+				var platformFlyout = flyoutView.ToPlatform(handler.MauiContext);
+				if (platformFlyout is Visual visual)
+				{
+					visual.HorizontalAlignment = Align.Stretch;
+					visual.VerticalAlignment = Align.Stretch;
+					handler._flyoutCell.Content = visual;
+				}
 			}
 		}
 	}
@@ -89,12 +99,17 @@ public partial class FlyoutPageHandler : TuiViewHandler<IFlyoutView, TuiGrid>
 
 		if (view.Detail is IView detailView)
 		{
-			var platformDetail = detailView.ToPlatform(handler.MauiContext);
-			if (platformDetail is Visual visual)
+			var detailType = detailView.GetType().Name;
+			using (TuiLogging.PushChildContext("FlyoutPage", detailType, 1))
 			{
-				visual.HorizontalAlignment = Align.Stretch;
-				visual.VerticalAlignment = Align.Stretch;
-				handler._detailCell.Content = visual;
+				Logger.Debug("Mapping detail panel: {DetailType}", detailType);
+				var platformDetail = detailView.ToPlatform(handler.MauiContext);
+				if (platformDetail is Visual visual)
+				{
+					visual.HorizontalAlignment = Align.Stretch;
+					visual.VerticalAlignment = Align.Stretch;
+					handler._detailCell.Content = visual;
+				}
 			}
 		}
 	}
@@ -105,6 +120,7 @@ public partial class FlyoutPageHandler : TuiViewHandler<IFlyoutView, TuiGrid>
 			return;
 
 		var visible = view.IsPresented;
+		Logger.Debug("Flyout visibility changed: IsPresented={IsPresented}", visible);
 		handler._flyoutCell.IsVisible = visible;
 		handler._separatorCell.IsVisible = visible;
 

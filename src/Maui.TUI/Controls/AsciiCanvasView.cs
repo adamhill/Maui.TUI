@@ -1,5 +1,6 @@
 #nullable enable
 using Microsoft.Maui.Controls;
+using Serilog;
 
 namespace Maui.TUI.Controls;
 
@@ -22,6 +23,7 @@ namespace Maui.TUI.Controls;
 /// </remarks>
 public class AsciiCanvasView : View, IAsciiCanvasView
 {
+	private static readonly ILogger Logger = Log.ForContext<AsciiCanvasView>();
 	/// <summary>Bindable property for <see cref="CanvasWidth"/>.</summary>
 	public static readonly BindableProperty CanvasWidthProperty =
 		BindableProperty.Create(nameof(CanvasWidth), typeof(int), typeof(AsciiCanvasView), 80);
@@ -91,18 +93,27 @@ public class AsciiCanvasView : View, IAsciiCanvasView
 	/// </summary>
 	public void InvalidateCanvas()
 	{
+		Logger.Verbose("Canvas invalidated ({Width}x{Height})", CanvasWidth, CanvasHeight);
 		Handler?.Invoke(nameof(InvalidateCanvas));
 	}
 
 	/// <summary>
 	/// Starts continuous animation at <see cref="TargetFps"/>.
 	/// </summary>
-	public void StartAnimation() => IsAnimating = true;
+	public void StartAnimation()
+	{
+		Logger.Information("Starting animation: {Width}x{Height} @ {Fps}fps", CanvasWidth, CanvasHeight, TargetFps);
+		IsAnimating = true;
+	}
 
 	/// <summary>
 	/// Stops continuous animation.
 	/// </summary>
-	public void StopAnimation() => IsAnimating = false;
+	public void StopAnimation()
+	{
+		Logger.Information("Stopping animation");
+		IsAnimating = false;
+	}
 
 	/// <summary>
 	/// Returns the fixed canvas size. Calls base so that

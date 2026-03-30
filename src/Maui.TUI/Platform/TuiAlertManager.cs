@@ -3,6 +3,7 @@ using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Controls.Internals;
+using Serilog;
 using XenoAtom.Terminal.UI;
 using XenoAtom.Terminal.UI.Controls;
 using XenoAtom.Terminal.UI.Layout;
@@ -15,6 +16,8 @@ namespace Maui.TUI.Platform;
 /// </summary>
 public static class TuiAlertManager
 {
+	private static readonly ILogger Logger = Log.ForContext(typeof(TuiAlertManager));
+
 	/// <summary>
 	/// Registers the TUI alert subscription in the DI container.
 	/// AlertManager.Subscribe() checks DI first: context.Services.GetService&lt;IAlertManagerSubscription&gt;()
@@ -29,7 +32,7 @@ public static class TuiAlertManager
 			var iamsType = amType?.GetNestedType("IAlertManagerSubscription", BindingFlags.Public | BindingFlags.NonPublic);
 			if (iamsType is null)
 			{
-				Console.Error.WriteLine("[TuiAlertManager] IAlertManagerSubscription type not found");
+				Logger.Warning("IAlertManagerSubscription type not found — alerts may not work");
 				return;
 			}
 
@@ -43,16 +46,17 @@ public static class TuiAlertManager
 
 			if (proxy is null)
 			{
-				Console.Error.WriteLine("[TuiAlertManager] Failed to create proxy");
+				Logger.Error("Failed to create AlertSubscription proxy");
 				return;
 			}
 
 			// Register as the internal interface type so AlertManager.Subscribe() finds it via DI
 			services.AddSingleton(iamsType, proxy);
+			Logger.Debug("TuiAlertManager subscription registered via DispatchProxy");
 		}
 		catch (Exception ex)
 		{
-			Console.Error.WriteLine($"[TuiAlertManager] Failed to register: {ex.Message}");
+			Logger.Error(ex, "Failed to register TuiAlertManager subscription");
 		}
 	}
 
@@ -65,9 +69,13 @@ public static class TuiAlertManager
 		var cancel = argsType.GetProperty("Cancel")?.GetValue(arguments) as string;
 		var result = argsType.GetProperty("Result")?.GetValue(arguments);
 
+		Logger.Information("Alert requested: Title={Title}, Accept={Accept}, Cancel={Cancel}",
+			title, accept, cancel);
+
 		var app = GetTerminalApp(sender);
 		if (app is null)
 		{
+			Logger.Warning("No TerminalApp available for alert, auto-dismissing");
 			SetResult(result, false);
 			return;
 		}
@@ -121,9 +129,14 @@ public static class TuiAlertManager
 		var cancel = argsType.GetProperty("Cancel")?.GetValue(arguments) as string;
 		var result = argsType.GetProperty("Result")?.GetValue(arguments);
 
+		var buttonList = buttonsEnum?.ToList();
+		Logger.Information("ActionSheet requested: Title={Title}, Buttons={ButtonCount}, Destruction={Destruction}",
+			title, buttonList?.Count ?? 0, destruction);
+
 		var app = GetTerminalApp(sender);
 		if (app is null)
 		{
+			Logger.Warning("No TerminalApp available for action sheet, auto-dismissing");
 			SetStringResult(result, null);
 			return;
 		}
@@ -187,9 +200,13 @@ public static class TuiAlertManager
 		var placeholder = argsType.GetProperty("Placeholder")?.GetValue(arguments) as string ?? "";
 		var result = argsType.GetProperty("Result")?.GetValue(arguments);
 
+		Logger.Information("Prompt requested: Title={Title}, Placeholder={Placeholder}",
+			title, placeholder);
+
 		var app = GetTerminalApp(sender);
 		if (app is null)
 		{
+			Logger.Warning("No TerminalApp available for prompt, auto-dismissing");
 			SetStringResult(result, null);
 			return;
 		}
@@ -271,9 +288,13 @@ public static class TuiAlertManager
 /// </summary>
 public class AlertSubscriptionProxy<T> : DispatchProxy
 {
+	private static readonly ILogger Logger = Log.ForContext(typeof(AlertSubscriptionProxy<T>));
+
 	protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
 	{
 		if (targetMethod is null) return null;
+
+		Logger.Debug("AlertSubscription invoked: {MethodName}", targetMethod.Name);
 
 		switch (targetMethod.Name)
 		{

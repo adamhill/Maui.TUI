@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Microsoft.Maui.Animations;
+using Serilog;
 using XenoAtom.Terminal.UI;
 
 namespace Maui.TUI.Platform;
@@ -29,6 +30,8 @@ namespace Maui.TUI.Platform;
 /// </remarks>
 public sealed class TuiTicker : ITicker, IDisposable
 {
+    private static readonly ILogger Logger = Log.ForContext<TuiTicker>();
+
     private readonly Stopwatch _stopwatch = new();
     private long _lastFireTimestampTicks;
     private Timer? _timer;
@@ -49,6 +52,9 @@ public sealed class TuiTicker : ITicker, IDisposable
         _timerCallback = OnTimerElapsed;
         _postCallback = OnPostedToUIThread;
         _minIntervalTicks = CalculateMinIntervalTicks(_maxFps);
+
+        Logger.Debug("TuiTicker created with MaxFps={MaxFps}, SystemEnabled={SystemEnabled}",
+            _maxFps, SystemEnabled);
     }
 
     /// <summary>
@@ -114,6 +120,9 @@ public sealed class TuiTicker : ITicker, IDisposable
 
         var interval = TimeSpan.FromMilliseconds(1000.0 / _maxFps);
         _timer = new Timer(_timerCallback, null, interval, interval);
+
+        Logger.Information("TuiTicker started at {MaxFps} fps (interval={IntervalMs:F1}ms)",
+            _maxFps, interval.TotalMilliseconds);
     }
 
     /// <inheritdoc/>
@@ -127,6 +136,8 @@ public sealed class TuiTicker : ITicker, IDisposable
 
         _timer?.Dispose();
         _timer = null;
+
+        Logger.Information("TuiTicker stopped");
     }
 
     /// <summary>
@@ -218,11 +229,17 @@ public sealed class TuiTicker : ITicker, IDisposable
     {
         // NO_MOTION is a de-facto standard for disabling animations
         if (Environment.GetEnvironmentVariable("NO_MOTION") is not null)
+        {
+            Logger.Warning("Animations disabled: NO_MOTION environment variable is set");
             return false;
+        }
 
         // REDUCE_MOTION is another common hint
         if (Environment.GetEnvironmentVariable("REDUCE_MOTION") is not null)
+        {
+            Logger.Warning("Animations disabled: REDUCE_MOTION environment variable is set");
             return false;
+        }
 
         return true;
     }
