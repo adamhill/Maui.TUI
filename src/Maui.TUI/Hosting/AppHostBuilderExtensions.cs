@@ -3,6 +3,7 @@ using Maui.TUI.Handlers;
 using Maui.TUI.Platform;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Maui.Animations;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Controls.Hosting;
 using Microsoft.Maui.Dispatching;
@@ -79,6 +80,14 @@ public static class AppHostBuilderExtensions
 	static MauiAppBuilder SetupDefaults(this MauiAppBuilder builder)
 	{
 		builder.Services.AddSingleton<IDispatcherProvider>(svc => new TuiDispatcherProvider());
+
+		// Register TuiTicker as a singleton so the same instance is shared across the app.
+		// Using TryAdd* ensures we don't conflict if the user registers their own.
+		// MUST be registered before ConfigureAnimations() which uses TryAddScoped for ITicker.
+		builder.Services.AddSingleton<TuiTicker>();
+		builder.Services.AddSingleton<ITicker>(svc => svc.GetRequiredService<TuiTicker>());
+		builder.Services.AddSingleton<IAnimationManager>(svc =>
+			new AnimationManager(svc.GetRequiredService<ITicker>()));
 
 		builder.Services.AddScoped(svc =>
 		{

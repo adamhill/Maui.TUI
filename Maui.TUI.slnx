@@ -5,4 +5,7 @@
   <Folder Name="/src/">
     <Project Path="src/Maui.TUI/Maui.TUI.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Maui.TUI.Animation.Tests/Maui.TUI.Animation.Tests.csproj" />
+  </Folder>
 </Solution>

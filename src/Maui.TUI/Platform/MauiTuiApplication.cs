@@ -1,6 +1,7 @@
 using Maui.TUI.Hosting;
 using Maui.TUI.Platform;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Maui.Animations;
 using Microsoft.Maui.Hosting;
 using XenoAtom.Terminal.UI;
 using XenoAtom.Terminal.UI.Controls;
@@ -62,6 +63,9 @@ public abstract class MauiTuiApplication : IPlatformApplication
 	{
 		var rootPanel = Initialize();
 
+		// Resolve the TuiTicker so we can wire it to the TerminalApp
+		var ticker = Services.GetService<TuiTicker>();
+
 		// Ensure Ctrl+C is passed as input rather than handled as SIGINT
 		var terminal = XenoAtom.Terminal.Terminal.Instance;
 		terminal.Options.TreatControlCAsInput = true;
@@ -86,8 +90,20 @@ public abstract class MauiTuiApplication : IPlatformApplication
 		// Wire up dispatcher to use TerminalApp.Post() for background thread dispatch
 		TuiDispatcher.SetTerminalApp(_terminalApp);
 
+		// Wire the TuiTicker to the TerminalApp so timer callbacks
+		// are marshaled to the UI thread
+		if (ticker is not null)
+			ticker.TerminalApp = _terminalApp;
+
 		// Run the terminal app loop (blocks until exit)
 		_terminalApp.Run();
+
+		// Clean up ticker when the app exits
+		if (ticker is not null)
+		{
+			ticker.Stop();
+			ticker.TerminalApp = null;
+		}
 	}
 
 	/// <summary>
