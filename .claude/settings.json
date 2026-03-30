@@ -1,0 +1,29 @@
+{
+    "permissions": {
+        "allow": [
+            "Bash(dotnet build:*)",
+            "Bash(dotnet test:*)",
+            "Bash(dotnet run:*)",
+            "Bash(dotnet format:*)",
+            "Bash(git:*)"
+        ],
+        "deny": [
+            "Read(.env*)",
+            "Read(**/*.pfx)",
+            "Bash(rm -rf:*)"
+        ]
+    },
+    "hooks": {
+        "PostToolUse": [
+            {
+                "matcher": "Edit|Write|MultiEdit",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "jq -r '.tool_input.file_path // empty' | { read file_path; if echo \"$file_path\" | grep -qE '\\.cs$'; then dotnet format --include \"$file_path\" --no-restore 2>/dev/null || true; fi; }"
+                    }
+                ]
+            }
+        ]
+    }
+}
